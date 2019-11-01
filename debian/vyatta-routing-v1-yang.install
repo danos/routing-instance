@@ -1,0 +1,3 @@
+tmplscripts/routing-instance-list.sh opt/vyatta/share/tmplscripts/routing-instance
+scripts/vrf-vci-notify-add opt/vyatta/etc/vrf-manager-add-vrf.d/
+yang/vyatta-routing-v1.yang usr/share/configd/yang/

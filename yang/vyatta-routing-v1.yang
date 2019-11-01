@@ -1,0 +1,191 @@
+module vyatta-routing-v1 {
+	namespace "urn:vyatta.com:mgmt:vyatta-routing-v1:1";
+	prefix vyatta-routing-v1;
+
+	import vyatta-types-v1 { prefix types; }
+
+	import configd-v1 { prefix configd; }
+
+	organization "AT&T Inc.";
+	contact
+		"AT&T
+		 Postal: 208 S. Akard Street
+		         Dallas, TX 25202
+		 Web: www.att.com";
+
+	description
+		"Copyright (c) 2018-2019, AT&T Intellectual Property.
+		 All rights reserved.
+
+		 Copyright (c) 2016 by Brocade Communications Systems, Inc.
+		 All rights reserved.
+
+		 Redistribution and use in source and binary forms, with or without
+		 modification, are permitted provided that the following conditions
+		 are met:
+
+		   1. Redistributions of source code must retain the above copyright
+		      notice, this list of conditions and the following disclaimer.
+		   2. Redistributions in binary form must reproduce the above
+		      copyright notice, this list of conditions and the following
+		      disclaimer in the documentation and/or other materials provided
+		      with the distribution.
+		   3. Neither the name of the copyright holder nor the names of its
+		      contributors may be used to endorse or promote products derived
+		      from this software without specific prior written permission.
+
+		 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+		 'AS IS' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+		 LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+		 FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+		 COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+		 INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+		 BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+		 LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+		 CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+		 LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
+		 ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+		 POSSIBILITY OF SUCH DAMAGE.
+
+		 SPDX-License-Identifier: BSD-3-Clause
+
+		 Routing Instance configuration";
+
+	revision 2018-09-27 {
+		description "Add notification when an instance is added";
+	}
+
+	revision 2018-08-22 {
+		description "Updated organization and contact";
+	}
+
+	revision 2016-06-28 {
+		description "Addition of routing-instance typedefs and groups: " +
+			    "routing-instance-ref, routing-instance-name, " +
+			    "routing-instance-list, routing-instance-leaf " +
+			    "and routing-instance-or-default-leaf.";
+	}
+
+	revision 2016-02-01 {
+		description "Initial revision of version 1.";
+	}
+
+	typedef routing-instance-ref {
+		type leafref {
+			path "/routing/routing-instance/instance-name";
+		}
+	}
+
+	typedef routing-instance-name {
+		description "A Routing Instance name";
+		type types:alpha-numeric {
+			length "1..16";
+		}
+	}
+
+	grouping routing-instance-list {
+		list routing-instance {
+			description "A list of Routing Instances";
+			configd:help "Routing Instance";
+			key instance-name;
+			leaf instance-name {
+				description "Routing Instance name";
+				type routing-instance-ref;
+			}
+		}
+	}
+
+	grouping routing-instance-leaf {
+		leaf routing-instance {
+			description "A Routing Instance";
+			type routing-instance-ref;
+			configd:help "Routing Instance";
+		}
+	}
+
+	grouping routing-instance-or-default-leaf {
+		leaf routing-instance {
+			description "A Routing Instance name, or 'default'";
+			type union {
+				type routing-instance-name;
+				type enumeration {
+					enum default;
+				}
+			}
+			must "(current() = /vyatta-routing-v1:routing/vyatta-routing-v1:routing-instance/vyatta-routing-v1:instance-name) or (current() = 'default')" {
+				error-message "Unknown routing instance";
+			}
+			configd:help "Routing Instance";
+			configd:allowed "echo -n $VAR(/routing/routing-instance/@@)";
+		}
+	}
+
+	notification instance-added {
+		description "instance-added informs interested parties when a "+
+			"routing instance is added to the system.";
+		leaf name {
+			description "The name of the routing-instance that was added";
+			type string;
+		}
+	}
+
+	container routing {
+		description "Routing";
+		configd:help "Routing";
+		configd:begin "vrf-manager --add --all";
+		configd:end "vrf-manager --del --all";
+		configd:priority "100";
+		list routing-instance {
+			description "Routing Instance";
+			configd:help "Routing Instance";
+			key "instance-name";
+			leaf instance-name {
+				description "Routing Instance name";
+				type routing-instance-name;
+				must "((translate(current(),'ADEFLTU', 'adefltu') != 'default') and (translate(current(),'AL', 'al') != 'all'))" {
+					error-message "Routing Instance names 'default' and 'all' are not allowed.";
+				}
+				configd:help "Routing Instance name";
+			}
+			leaf instance-type {
+				description "Routing Instance type";
+				type enumeration {
+					enum "vrf" {
+						description "VRF lite";
+						configd:help "VRF lite";
+					}
+				}
+				configd:help "Routing Instance type";
+				default "vrf";
+			}
+			container protocols {
+				description "Routing protocol parameters for Routing Instance";
+				configd:help "Routing protocol parameters for Routing Instance";
+			}
+			container service {
+				description "Services for Routing Instance";
+				configd:help "Services for Routing Instance";
+			}
+			container system {
+				description "System parameters for Routing Instance";
+				configd:help "System parameters for Routing Instance";
+				container login {
+					description "Authentication services enabled in routing instance";
+					configd:help "Authentication services enabled in routing instance";
+					configd:end "/opt/vyatta/sbin/vyatta_update_login.pl --routing";
+				}
+			}
+			container security {
+				description "Security parameters for Routing Instance";
+				configd:help "Security parameters for Routing Instance";
+			}
+			leaf description {
+				description "Set description for this Routing-instance";
+				configd:help "Set description for this Routing-instance";
+				type string {
+					length "1..80";
+				}
+			}
+		}
+	}
+}
